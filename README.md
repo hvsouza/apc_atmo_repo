@@ -9,7 +9,7 @@
         - [HowTo Pandora](#howto-pandora)
             - [Other resourcers](#other-resourcers)
         - [APC Activities](#apc-activities)
-    - [FAQ](#faq)
+    - [General rules](#general-rules)
 
 <!-- markdown-toc end -->
 
