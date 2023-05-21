@@ -32,7 +32,6 @@ Please, keep in mind the following (from [this](https://linuxize.com/post/bashrc
     > if [ -f ~/.bashrc ]; then
     >   . ~/.bashrc
     > fi
-
     > ```
   
 ## Vim configuration
