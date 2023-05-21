@@ -36,8 +36,8 @@ Please, keep in mind the following (from [this](https://linuxize.com/post/bashrc
   
 ## Vim configuration
 
-* You cannot simply copy and paste the my vim configuration, first follow this tutorial first: <https://www.linode.com/docs/guides/introduction-to-vim-customization/>.
-* After this, use my `.vimrc` and `.vimrc.plug` as reference.
+* You cannot simply copy and paste my vim configuration, follow this tutorial first: <https://www.linode.com/docs/guides/introduction-to-vim-customization/>.
+* After this, use my `.vimrc` and `.vimrc.plug` as reference to create your own. 
 
 ## Tmux
 
