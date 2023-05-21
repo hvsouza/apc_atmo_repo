@@ -23,7 +23,7 @@ The folder `users_repo` contains scripts that people have used and saved for fut
 
 ### HowTo Pandora
 
-* In [this](https://docs.google.com/document/d/1F9tFiixJm6HJzYnptZbTODOaIBh2LUuIOQs_1bZshjQ/edit#heading=h.aczyuw2yex2w) you will find useful information on how to start pandora.
+* In [this](https://docs.google.com/document/d/1F9tFiixJm6HJzYnptZbTODOaIBh2LUuIOQs_1bZshjQ/edit#heading=h.aczyuw2yex2w) document you will find useful information on how to start pandora.
 
 * The [UK Soft&Ana workshop](https://indico.ph.ed.ac.uk/event/130/timetable/#all.detailed) is the best for starting.  
 Note that this tutorial was created for SBND. But application for DUNE will look the same.  
@@ -37,7 +37,7 @@ We all stopped at "Write a LArSoft analyzer". In this particular lessons, you ca
 
 ### APC Activities
 
-* [Link](https://docs.google.com/document/d/1CobHh-KE0DEMoUBn11OSFIwSZOZQ0Rn8gbI9bzDUdxI/edit#) to our activities.
+* [Link](https://docs.google.com/document/d/1CobHh-KE0DEMoUBn11OSFIwSZOZQ0Rn8gbI9bzDUdxI/edit#) to document with our activities.
 <!-- TODO: Merge the two repos maybe?-->
 
 * In [this](https://gitlab.in2p3.fr/pgranger/atmo_gen) repository, you can find instructions to the production and event visualization.
