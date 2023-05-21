@@ -18,7 +18,7 @@
 
 ## General configuration
 
-* You will find in repo an example of configuration, you can try copying it into your `.bashrc` file.  
+* You will find in repo an example of configuration, you can try copying it into your `.bash_profile` file.  
 Please, keep in mind the following (from [this](https://linuxize.com/post/bashrc-vs-bash-profile/) site):
 
     > `.bash_profile` is read and executed when Bash is invoked as an interactive login shell, while `.bashrc` is executed for an interactive non-login shell.  
