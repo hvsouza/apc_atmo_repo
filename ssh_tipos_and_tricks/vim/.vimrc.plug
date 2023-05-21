@@ -1,0 +1,62 @@
+call plug#begin('~/.vim/plugged')
+
+" " Figitive Vim Github Wrapper
+" Plug 'tpope/vim-figutive'
+
+" Surround for vim
+Plug 'tpope/vim-surround'
+
+" Nerd tree
+Plug 'scrooloose/nerdtree'
+
+" Lightline statusbar==
+Plug 'itchyny/lightline.vim'
+
+" Dracula theme
+Plug 'dracula/vim', { 'as': 'dracula' }
+
+Plug 'flazz/vim-colorschemes'
+
+" Vim repeat, for better `.` command
+Plug 'tpope/vim-repeat'
+
+" Vim commentary, to comment with `g c c`
+Plug 'tpope/vim-commentary'
+
+" Plug 'rip-rip/clang_complete'
+" Plug 'valloric/youcompleteme'
+
+
+" autor pair
+Plug 'jiangmiao/auto-pairs'
+
+" Well ..
+Plug 'CrossR/vim-fhicl'
+
+" Syntax package
+Plug 'sheerun/vim-polyglot'
+
+"{{ Syntax Highlighting and Colors }}
+"  Plug 'PotatoesMaster/i3-vim-syntax'                " i3 config highlighting
+"  Plug 'kovetskiy/sxhkd-vim'                         " sxhkd highlighting
+Plug 'vim-python/python-syntax'                    " Python highlighting
+"  Plug 'ap/vim-css-color'                            " Color previews for CSS
+
+" Some closing tags for xml files
+Plug 'alvan/vim-closetag'
+
+" For fast change tags
+Plug 'andrewradev/tagalong.vim'
+
+" Well.. easy align
+Plug 'junegunn/vim-easy-align'
+
+
+" Vim undo tree
+Plug 'mbbill/undotree'
+
+
+" For showing matches number
+Plug 'google/vim-searchindex'
+
+call plug#end()
