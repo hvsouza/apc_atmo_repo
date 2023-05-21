@@ -44,7 +44,7 @@ We all stopped at "Write a LArSoft analyzer". In this particular lessons, you ca
 
 ## General rules
 
-1. Please, create a README.md file for each directory in which that is relevant. For example, look the folders `ssh_tips_and_tricks` or `installation_scripts`.
+1. Please, create a README.md file for each directory in which that is relevant. For example, look the folders `ssh_tips_and_tricks` or `install_larsoft_example`.
 2. Your personal codes should be kept into `./personal/{your_name}/`
 3. Keep things organized, specially before requesting to merge.
 4. Don't be afraid to ask questions about this repo, larsoft, pandora, github, life or video games.
