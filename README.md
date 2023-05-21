@@ -25,15 +25,15 @@ The folder `users_repo` contains scripts that people have used and saved for fut
 
 * In [this](https://docs.google.com/document/d/1F9tFiixJm6HJzYnptZbTODOaIBh2LUuIOQs_1bZshjQ/edit#heading=h.aczyuw2yex2w) you will find useful information on how to start pandora.
 
-* The UK Soft&Ana workshop ([link](https://indico.ph.ed.ac.uk/event/130/timetable/#all.detailed)) is the best for starting.  
+* The [UK Soft&Ana workshop](https://indico.ph.ed.ac.uk/event/130/timetable/#all.detailed) is the best for starting.  
 Note that this tutorial was created for SBND. But application for DUNE will look the same.  
 We all stopped at "Write a LArSoft analyzer". In this particular lessons, you cannot copy and paste the code, so try to type it out but if you need any help, there are materials available here to help you implement it. 
 
 #### Other resourcers
 
-* ([January 2023 LArSoft/Art tutorial](https://indico.fnal.gov/event/57711/))
+* [January 2023 LArSoft/Art tutorial](https://indico.fnal.gov/event/57711/)
 
-* ([France analysis workshop](https://indico.in2p3.fr/event/29662/timetable/#20230418))
+* [France analysis workshop](https://indico.in2p3.fr/event/29662/timetable/#20230418)
 
 ### APC Activities
 
