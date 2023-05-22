@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Make sure you make this executable using
+# chmod u+x find_fhicl.sh
+# Example of usage, keep this file in your `~/` dir and simply type:
+# ~/find_fhicl.sh eventdump.fcl
+
+
 if [ x$FHICL_FILE_PATH = x ]; then
   echo "***************************************"
   echo "Variable FHICL_FILE_PATH not found."
