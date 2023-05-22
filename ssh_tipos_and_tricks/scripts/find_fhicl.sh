@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Make sure you make this executable using
-# chmod u+x find_fhicl.sh
-# Example of usage, keep this file in your ~/ dir and simply type:
-# ~/find_fhicl.sh eventdump.fcl
-
 if [ x$FHICL_FILE_PATH = x ]; then
   echo "***************************************"
   echo "Variable FHICL_FILE_PATH not found."
@@ -30,7 +25,13 @@ if [ x$FHICL_SEARCH_FILE = x ]; then
 
 fi
 
-SEARCH_PATHS=(`awk '{split($0,array,":"); for (a in array)  printf "%s ", array[a]; printf "\n";}' <<< $FHICL_FILE_PATH`)
+if [[ $FHICL_SEARCH_FILE == *.fcl ]]; then
+	SEARCH_PATHS=(`awk '{split($0,array,":"); for (a in array)  printf "%s ", array[a]; printf "\n";}' <<< $FHICL_FILE_PATH`)
+	RECURSIVE=true
+else
+	SEARCH_PATHS=(`awk '{split($0,array,":"); for (a in array)  printf "%s ", array[a]; printf "\n";}' <<< $FW_SEARCH_PATH`)
+	RECURSIVE=false
+fi
 
 if [ ! -d "srcs" ]; then
   echo "***************************************"
@@ -38,7 +39,7 @@ if [ ! -d "srcs" ]; then
   echo "I will continue to search \$FHICL_FILE_PATH,"
   echo "but you will unlikely have write access to the file."
   echo "Check out a version of uboonecode using the instructions"
-  echo "Provided here: "
+  echo "Provided here: " 
   echo "https://cdcvs.fnal.gov/redmine/projects/uboonecode/wiki/Uboone_guide"
   echo "***************************************"
 
@@ -46,33 +47,37 @@ if [ ! -d "srcs" ]; then
 
 #if srcs directory exists, add it to the search path
 else
-  SEARCH_PATHS=("${SEARCH_PATHS[@]}" "srcs")
+  SEARCH_PATHS=("${SEARCH_PATHS[@]}" "srcs") 
 fi
 
 
 for elt in ${SEARCH_PATHS[*]};
 do
-
+  
   #skip local dirs autmoatically added to the path but do not exist
  #echo $CHECKED_WORKING_DIR
  if [ ! -d "$elt" ]; then
    continue
  fi
-
+ 
  # also, skip the current working dir (".")
  if [ "$elt" == "." ]; then
    continue
  fi
-
-
- #echo $elt
- FOUND_FHICL=`find $elt -name $FHICL_SEARCH_FILE`
-
+ 
+ 
+ #echo $elt 
+ if [ "$RECURSIVE" = true ]; then
+ 	FOUND_FHICL=`find $elt -name $FHICL_SEARCH_FILE`
+ else
+ 	FOUND_FHICL=`find $elt -maxdepth 1 -name $FHICL_SEARCH_FILE`
+ fi
+ 
  if [ -n "$FOUND_FHICL" ]; then
    echo "=========================="
    echo "Found fhicl file(s):"
-
+    
    awk -F:" " '{printf "%s \n", $1}' <<< $FOUND_FHICL
  fi
-
+    
 done
