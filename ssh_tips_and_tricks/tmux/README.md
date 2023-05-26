@@ -6,8 +6,7 @@ For the plugins set on the config file to work, clone the plugin menager of tmux
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 ```
 
-
-Open a tmux session and it should be all fine.
+Open a tmux session and it should be all fine. You will need to press `Ctrl-s I` to install the plugins.
 
 If you want _italic_ or **bold**, you need to setup a screen as following:
 
