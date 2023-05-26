@@ -40,7 +40,7 @@ Please, keep in mind the following (from [this](https://linuxize.com/post/bashrc
 * After this, use my `.vimrc` and `.vimrc.plug` as reference to create your own. 
 
 ## Tmux
-
+* The script might be outdated. You can use this as reference to change it: <https://frankenthal.dev/post/tmux-on-lxplus_pt0/>
 * I believe this is easier, keep in mind that my configurations are optmize for vim keybindings.
 * I use a different display for tmux that allows for italic and bold characteres. Make sure you disable it if you use my configuration
 
