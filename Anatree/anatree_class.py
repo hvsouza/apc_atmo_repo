@@ -138,6 +138,7 @@ class Anatree:
 
     def get_full_reco_tracks(self):
         merged = self.reco_tracks.join(self.geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = merged.join(self.nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
         return merged
     
     def load_dqdx(self):
