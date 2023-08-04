@@ -115,8 +115,10 @@ class Anatree:
 
         arr['subrun'] = np.repeat(subrun, ntracks)
         arr['event'] = np.repeat(event, ntracks)
-        
         cols = [key for key in self.tree.keys() if 'trk' in key]
+
+        exclusion_list = ['cosmic', 'T0', 'momms', 'pidmva', 'evtxid']  #all this are empty
+        cols = [x for x in cols if all(exclusion_item not in x for exclusion_item in exclusion_list)]
         cols.append('trkId_pandoraTrack')
         cols.remove("trkdedx_pandoraTrack")
         cols.remove("trkdqdx_pandoraTrack")
