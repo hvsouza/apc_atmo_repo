@@ -71,7 +71,7 @@ class Anatree:
             # arr[c] = np.concatenate(a)
             arr[c] = ak.ravel(a)
 
-        self.geant = pd.DataFrame(arr)
+        self.geant = pl.from_pandas(pd.DataFrame(arr))
 
     def _setup_reco(self):
         self._setup_reco_shower()
