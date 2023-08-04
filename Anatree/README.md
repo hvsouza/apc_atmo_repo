@@ -20,7 +20,7 @@ Here is an example on how to use the class:
 Assuming you have this repository cloned on your `Documents` folder.  
 You don't need to use `user_name`
 
-``` jupyter-notebook
+``` python
 # In jupyter-notebooks, this two comments allow to reload the class automatically in case of changes
 %load_ext autoreload
 %autoreload 2
@@ -38,7 +38,7 @@ anatree:Anatree
 
 And to load the data you can use the following
 
-``` jupyter-notebook
+``` python
 anatree = Anatree("/path/to/data/anatree_data.root, entry_stop=10000)
 ```
 
@@ -51,7 +51,7 @@ The df `anatree.merged` is the combination of reconstructed tracks with their re
 
 To plot the energy histogram of all primary muons, one can use the following:
 
-``` jupyter-notebook
+``` python
 import polars as pl
 
 df = anatree.geant
