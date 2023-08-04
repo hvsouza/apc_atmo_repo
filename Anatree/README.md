@@ -53,6 +53,7 @@ To plot the energy histogram of all primary muons, one can use the following:
 
 ``` python
 import polars as pl
+from ana_tools import *
 
 df = anatree.geant
 df = df.filter(
