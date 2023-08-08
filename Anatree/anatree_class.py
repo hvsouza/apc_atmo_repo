@@ -250,9 +250,9 @@ class Anatree:
         else:
             assert(False)
     
-    def read_parquet(self, fpath, batches=-1, batch_start = 0, types=['nu', 'geant', 'reco_tracks', 'reco_showers'], **kwargs):
+    def read_parquet(self, fpath, batches=-1, batch_start = 0, types=['nu', 'geant', 'reco_tracks', 'reco_showers'], concat=True, **kwargs):
         '''
-        Read parquet files. Need to `collect` dataframes after
+        Read parquet files
         fpath : str
             Path to files.
         batch : int
@@ -265,12 +265,15 @@ class Anatree:
         types : str
             If you want to select what to load
         '''
-        self.nu = pl.DataFrame({})
-        self.geant = pl.DataFrame({})
-        self.reco_tracks = pl.DataFrame({})
-        self.reco_showers = pl.DataFrame({})
-        df_types = {'nu': self.nu, 'geant':self.geant, 'reco_tracks': self.reco_tracks, 'reco_showers': self.reco_showers}
-
+        # self.nu = pl.DataFrame({})
+        # self.geant = pl.DataFrame({})
+        # self.reco_tracks = pl.DataFrame({})
+        # self.reco_showers = pl.DataFrame({})
+        if ~concat:
+            self.nu = []
+            self.geant = []
+            self.reco_tracks = []
+            self.reco_showers = []
 
 
         all_files = os.listdir(fpath)
@@ -293,14 +296,17 @@ class Anatree:
                 if hasattr(self, type): # check if dataframe exist
                     df:pl.DataFrame
                     df = getattr(self, type)
-                    if i == 0:
-                        setattr(self,type,dfnew)
+                    if concat:
+                        if i == 0:
+                            setattr(self,type,dfnew)
+                        else:
+                            if type == 'geant': rechunk = False
+                            else: rechunk = True
+                            df = pl.concat([df,dfnew], rechunk=rechunk)
+                            setattr(self,type,df)
                     else:
-                        if type == 'geant': rechunk = False
-                        else: rechunk = True
-                        df = pl.concat([df,dfnew], rechunk=rechunk)
+                        df.append(dfnew)
                         setattr(self,type,df)
-
                 else:
                     print(f"DataFrame '{file}' not found.")
 
