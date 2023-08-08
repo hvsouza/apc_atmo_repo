@@ -4,22 +4,26 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import polars as pl
+import os
 
 class Anatree:
     tree:uproot.TTree
+    fname: str
 
-    def __init__(self, fname, entry_start=None, entry_stop=None):
+    def __init__(self, fname:str, entry_start=None, entry_stop=None, load_data = True):
         self.entry_start = entry_start
         self.entry_stop = entry_stop
-        tree = uproot.open(f"{fname}:analysistree/anatree")
-        # tree.show()
-        self.tree = tree
+        if fname.endswith('.root'):
+            tree = uproot.open(f"{fname}:analysistree/anatree")
+            self.tree = tree
+        
+        if load_data:
+            self.load_anatree()
 
-
-        self._setup_nutree()
-        self._setup_geant()
-        self._setup_reco()
-        # self._process()
+    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers']):
+        if 'nu' in info: self._setup_nutree()
+        if 'geant' in info: self._setup_geant()
+        if 'reco_tracks' or 'reco_tracks' in info: self._setup_reco()
 
     def _setup_nutree(self):
         print("Loading nu infos")
@@ -153,4 +157,175 @@ class Anatree:
 
         arr['subrun'] = np.repeat(subrun, ntracks)
         arr['event'] = np.repeat(event, ntracks)
+
+    def write_polars_parquet(self, fpath, batch_size = 10000, exclude=[''], max_events = None):
+        """
+        Function to create parquet files for polars. 
+        fpath: str
+            Path to save files
+        batch_size: int
+            Amount of events in each file created
+        exclude: list
+            Options: 'nu', 'geant' or 'reco'
+        max_events : int
+            Maximum number of events saved in total
+        """ 
+        
+        from IPython.display import clear_output
+
+        fpath = self._manage_path(fpath)
+
+        exclude=list(exclude)
+        files_to_write = ['nu', 'geant', 'reco']
+        for exc in exclude:
+            try:
+                files_to_write.remove(exc)
+            except:
+                pass
+
+
+        if 'reco' in files_to_write:
+            files_to_write.remove('reco')
+            files_to_write.append('reco_tracks')
+            files_to_write.append('reco_showers')
+
+        total_events = self.tree.num_entries
+        if max_events != None:
+            total_events = max_events
+        nbatch = total_events//batch_size
+
+        if total_events%batch_size!=0:
+            nbatch+=1
+
+        self.entry_start = 0
+        self.entry_stop = batch_size # the `entry_stop` event is not executed 
+
+        output = []
+        for b in range(nbatch):
+            for out in output: print(out)
+            print(f'Processing batch {b}')
+            self.load_anatree()
+            
+            for file in files_to_write:
+                if hasattr(self, file): # check if dataframe exist
+                    df:pl.DataFrame
+                    df = getattr(self, file)
+                    print(f'Saving {file}...')
+                    df.write_parquet(f'{fpath}/{file}_{b}.parquet')
+                    
+                else:
+                    print(f"DataFrame '{file}' not found.")
+            
+            output.append(f'Batch {b+1}/{nbatch} done')
+            clear_output()
+
+            self.entry_start += batch_size
+            self.entry_stop += batch_size
+
+        for out in output: print(out)
+
+    def _manage_path(self,fpath):
+        if os.path.isfile(fpath):
+            print('ERROR! `fpath` should be a path, not a file')
+            assert(False)
+        
+        if os.path.exists(fpath):
+            return fpath
+        
+        if os.path.isabs(fpath) == False:
+            # Trying relative path
+            
+            relative_path = os.getcwd() + "/" + fpath
+            if os.path.exists(relative_path):
+                return relative_path
+            else:
+                fpath = relative_path
+            
+        user_input = input(f'Path {fpath} not found! Create one (yes/no)?')
+        yes_choices = ['yes', 'y']
+        # no_choices = ['no', 'n']
+        if user_input.lower() in yes_choices:
+            os.mkdir(fpath)
+            return fpath
+        else:
+            assert(False)
+    
+    def read_parquet(self, fpath, batches=-1, batch_start = 0, types=['nu', 'geant', 'reco_tracks', 'reco_showers'], **kwargs):
+        '''
+        Read parquet files. Need to `collect` dataframes after
+        fpath : str
+            Path to files.
+        batch : int
+            Number of batches to be read. If -1, all will be read
+        
+        **kwargs
+            Parameters for `read_parquet` of polars.
+
+        
+        types : str
+            If you want to select what to load
+        '''
+        self.nu = pl.DataFrame({})
+        self.geant = pl.DataFrame({})
+        self.reco_tracks = pl.DataFrame({})
+        self.reco_showers = pl.DataFrame({})
+        df_types = {'nu': self.nu, 'geant':self.geant, 'reco_tracks': self.reco_tracks, 'reco_showers': self.reco_showers}
+
+
+
+        all_files = os.listdir(fpath)
+        rechunk=False
+        # loop by type
+        for type in types:
+            files = [f for f in all_files if type in f]
+            files.sort()
+            for b in range(batch_start):
+                files.pop(0)
+            if batches != -1:
+                files = files[:-batches]
+
+            nfiles = len(files)
+            for i, file in enumerate(files):
+                print(f'Reading {type} files... {i+1}/{nfiles}', end='\r')
+
+                dfnew:pl.DataFrame
+                dfnew = pl.scan_parquet(f'{fpath}/{file}', **kwargs)
+                if hasattr(self, type): # check if dataframe exist
+                    df:pl.DataFrame
+                    df = getattr(self, type)
+                    if i == 0:
+                        setattr(self,type,dfnew)
+                    else:
+                        if type == 'geant': rechunk = False
+                        else: rechunk = True
+                        df = pl.concat([df,dfnew], rechunk=rechunk)
+                        setattr(self,type,df)
+
+                else:
+                    print(f"DataFrame '{file}' not found.")
+
+                # if df_types[type].is_empty():
+                # print('trying...')
+                # print(self.df_types[type])
+                # self.nu = pl.DataFrame({"4":2})
+                # df_types[type] = pl.DataFrame({"2":1})
+
+            print('')
+
+                # else:
+                #     df_types[type] = pl.concat([df_types[type],dfnew], rechunk=True)
+            
+                    
+            
+            
+        
+
+
+        
+
+
+        
+
+
+            
 
