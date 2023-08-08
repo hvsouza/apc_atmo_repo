@@ -39,7 +39,7 @@ class Anatree:
         arr = {}
         # nu_df = self.tree.arrays(cols, library='pd')
         # print(nu_df)
-        for c in tqdm(cols, disable=True):
+        for c in tqdm(cols):
             a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
             arr[c] = ak.ravel(a)
 
