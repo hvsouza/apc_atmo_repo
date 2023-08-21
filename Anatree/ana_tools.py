@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 def hstat(data, ax=None, **kwargs):
     if ax is None:
@@ -19,3 +20,18 @@ def hstat(data, ax=None, **kwargs):
     ax.hist(data, label=label, **kwargs)
 
     return fig
+
+def get1Dcred(values, cred):
+    #Assumes regular binning
+    #Returns bins id that are within the specified credibility interval
+    assert(0 < cred < 1)
+    # bin_centers = 0.5*(bins[:-1] + bins[1:])
+    bin_id = list(range(len(values)))
+    zipped = list(zip(bin_id, values))
+    bin_sorted = sorted(zipped, key= lambda x: x[1], reverse=True)
+
+    id_sorted, values_sorted = zip(*bin_sorted)
+    cum_ratio = np.cumsum(values_sorted)/np.sum(values_sorted)
+
+    idx = np.searchsorted(cum_ratio, cred)
+    return id_sorted[:idx]
