@@ -142,9 +142,15 @@ class Anatree:
                 arr[c] = flat
         self.reco_tracks = pl.from_pandas(pd.DataFrame(arr))
 
-    def get_full_reco_tracks(self):
-        merged = self.reco_tracks.join(self.geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
-        merged = merged.join(self.nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
+    def get_full_reco_tracks(self, df_tracks=None, df_geant=None, df_nu=None):
+        if df_tracks is None:
+            df_tracks = self.reco_tracks
+        if df_geant is None:
+            df_geant = self.geant
+        if df_nu is None:
+            df_nu = self.nu
+        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = merged.join(df_nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
         return merged
     
     def load_dqdx(self):
