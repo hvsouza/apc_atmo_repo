@@ -7,15 +7,15 @@ def hstat(data, ax=None, **kwargs):
     else:
         fig = plt.gcf()
 
-    avg = data.filter(data.is_not_nan()).mean()
-    std = data.filter(data.is_not_nan()).std()
+    avg = np.nanmean(data.to_numpy())
+    std = np.nanstd(data.to_numpy())
 
     if 'label' in kwargs:
         label = kwargs.pop('label')
     else:
         label = ""
 
-    label = rf"{label} ($\mu={avg:.2f}$ ; $\sigma={std:.2f}$)"
+    label = rf"{label} ($\mu={avg:.2f}$; $\sigma={std:.2f}$)"
 
     ax.hist(data, label=label, **kwargs)
 
