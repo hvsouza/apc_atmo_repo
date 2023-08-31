@@ -176,7 +176,8 @@ class Anatree:
         max_events : int
             Maximum number of events saved in total
         """ 
-        
+
+        # Setting up variables 
         from IPython.display import clear_output
 
         fpath = self._manage_path(fpath)
@@ -206,6 +207,18 @@ class Anatree:
         self.entry_start = 0
         self.entry_stop = batch_size # the `entry_stop` event is not executed 
 
+        for file in files_to_write:
+            file_to_test = f'{fpath}/{file}_0.parquet'
+            file_exist = os.path.isfile(file_to_test)
+            if file_exist:
+                user_input = input(f'WARNING: There are parquet files that will be overwritten !\nContinue and overwrite it? (yes/no)?')
+                yes_choices = ['yes', 'y']
+                if user_input.lower() in yes_choices:
+                    break
+                else:
+                    return
+
+               
         output = []
         for b in range(nbatch):
             for out in output: print(out)
