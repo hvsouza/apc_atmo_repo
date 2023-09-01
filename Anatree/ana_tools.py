@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
 
 def hstat(data, ax=None, **kwargs):
     if ax is None:
@@ -35,3 +36,28 @@ def get1Dcred(values, cred):
 
     idx = np.searchsorted(cum_ratio, cred)
     return id_sorted[:idx]
+
+def selection_events(extras = ['']):
+    """
+    Use this to quickly use subrun and event
+    Ex: df.groupby(selection_events()).agg(
+    ...
+    )
+    Or
+    df.groupby(selection_events(['some_column','another'])).agg(
+    ...
+    )
+
+    Also works with `pl.DataFrame.select`
+
+    """
+    r = ['subrun', 'event']
+    if extras != ['']:
+        r = r + extras
+    return r
+
+def get_event(subrun=0, event=1):
+    """
+    Quick function to get you a specific event
+    """
+    return (pl.col('subrun')==subrun) & (pl.col('event') == event)
