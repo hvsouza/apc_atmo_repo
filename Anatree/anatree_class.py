@@ -20,10 +20,11 @@ class Anatree:
         if load_data:
             self.load_anatree()
 
-    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers']):
+    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp']):
         if 'nu' in info: self._setup_nutree()
         if 'geant' in info: self._setup_geant()
         if 'reco_tracks' or 'reco_tracks' in info: self._setup_reco()
+        if 'pfp' in info: self._setup_pfp()
 
     def _setup_nutree(self):
         print("Loading nu infos")
@@ -142,6 +143,64 @@ class Anatree:
                 arr[c] = flat
         self.reco_tracks = pl.from_pandas(pd.DataFrame(arr))
 
+    def _setup_pfp(self):
+        print("Loading PFP infos")
+        
+        subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+   
+        npfps = self.tree['nPFParticles'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+
+        arr = {}
+
+        arr['subrun'] = np.repeat(subrun, npfps)
+        arr['event'] = np.repeat(event, npfps)
+
+        cols = [key for key in self.tree.keys() if 'pfp' in key]
+        cols.remove('pfp_daughterIDs')
+        cols.remove('pfp_numClusters')
+        cols.remove('pfp_clusterIDs')
+        cols.remove('pfp_numNeutrinos')
+        cols.remove('pfp_neutrinoIDs')
+        for c in tqdm(cols):
+            a = self.tree[c].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+            flat = np.concatenate(a)
+            if 1 < len(flat.shape) <= 3:
+                flat_x, flat_y, flat_z = np.split(flat, 3, axis=1)
+                arr[f"{c}_x"] = flat_x.flatten()
+                arr[f"{c}_y"] = flat_y.flatten()
+                arr[f"{c}_z"] = flat_z.flatten()
+            else:
+                arr[c] = flat
+            
+        self.pfp = pl.from_pandas(pd.DataFrame(arr))
+
+        temp_pfp = self.pfp
+        temp_pfp = temp_pfp.join(self.pfp.groupby(['subrun','event']).agg(
+            pl.col('pfp_selfID').filter( # Get ID of neutrino
+                pl.col('pfp_isPrimary')==1
+            ).first().alias('nuID')
+        ),on=['subrun','event'],how='left').with_columns(
+            pfp_parentID = pl.when( pl.col('pfp_parentID') == pl.col('nuID')).then(-1).otherwise(pl.col('pfp_parentID'))
+        )
+        
+        temp = temp_pfp.select(
+            pl.col('subrun'),
+            pl.col('event'),
+            pl.col('pfp_selfID'),
+            pl.col('pfp_parentID'),
+            pl.col('pfp_isTrack').alias('has_valid_pfp'),
+        )
+        self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
+        temp = temp_pfp.select(
+            pl.col('subrun'),
+            pl.col('event'),
+            pl.col('pfp_selfID'),
+            pl.col('pfp_parentID'),
+            pl.col('pfp_isShower').alias('has_valid_pfp'),
+        )
+        self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
+
     def get_full_reco_tracks(self, df_tracks=None, df_geant=None, df_nu=None):
         if df_tracks is None:
             df_tracks = self.reco_tracks
@@ -183,7 +242,7 @@ class Anatree:
         fpath = self._manage_path(fpath)
 
         exclude=list(exclude)
-        files_to_write = ['nu', 'geant', 'reco']
+        files_to_write = ['nu', 'geant', 'reco', 'pfp']
         for exc in exclude:
             try:
                 files_to_write.remove(exc)
@@ -222,7 +281,7 @@ class Anatree:
         output = []
         for b in range(nbatch):
             for out in output: print(out)
-            print(f'Processing batch {b}')
+            print(f'Processing batch {b+1}')
             self.load_anatree()
             
             for file in files_to_write:
@@ -269,7 +328,7 @@ class Anatree:
         else:
             assert(False)
     
-    def read_parquet(self, fpath, batches=-1, batch_start = 0, types=['nu', 'geant', 'reco_tracks', 'reco_showers'], concat=True, **kwargs):
+    def read_parquet(self, fpath, batches=-1, batch_start = 0, types=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp'], concat=True, **kwargs):
         '''
         Read parquet files
         fpath : str
@@ -293,6 +352,7 @@ class Anatree:
             self.geant = []
             self.reco_tracks = []
             self.reco_showers = []
+            self.pfp = []
 
 
         all_files = os.listdir(fpath)
