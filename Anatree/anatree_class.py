@@ -28,7 +28,7 @@ class Anatree:
 
     def _setup_nutree(self):
         print("Loading nu infos")
-        cols = ['nuPDG_truth','ccnc_truth','subrun','event','nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
+        cols = ['nuPDG_truth','ccnc_truth','subrun','event', 'nuWeight_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
                 'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth', 'mode_truth']
         arr = {}
         # nu_df = self.tree.arrays(cols, library='pd')
