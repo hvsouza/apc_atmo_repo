@@ -66,11 +66,24 @@ def get_event(subrun=0, event=1):
     return (pl.col('subrun')==subrun) & (pl.col('event') == event)
 
 
-def merge_same_df(dataframes:list):
+def merge_same_df(dataframes:list, filter_function=0, select_function=0):
+
+    def filtering():
+        if hasattr(filter_function, '__call__'):
+            return filter_function()
+        else:
+            return True
+
+    def selecting():
+        if hasattr(select_function, '__call__'):
+            return select_function()
+        else:
+            return pl.col('*')
+        
     merged:pl.DataFrame
     merged = 0
     for i, df in enumerate(dataframes):
-        df = df.collect()
+        df = df.filter(filtering()).collect()
         if i == 0:
             merged = df
         else:
