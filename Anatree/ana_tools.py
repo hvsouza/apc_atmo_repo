@@ -66,7 +66,21 @@ def get_event(subrun=0, event=1):
     return (pl.col('subrun')==subrun) & (pl.col('event') == event)
 
 
-def merge_same_df(dataframes:list, filter_function=0, select_function=0):
+def merge_same_df(dataframes:list, filter_function=None, select_function=None):
+    """
+    Merged list of dataframe and return it as a dataframe
+
+    Parameters
+    ----------
+
+    filter_function
+        User defined function for filtering
+    select_function
+        User defined selection
+
+    If nothing is passed, no filter is applying and all columns are selected
+
+    """
 
     def filtering():
         if hasattr(filter_function, '__call__'):
