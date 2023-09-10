@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+import particle
+import uproot
+import pandas as pd
 
 from anytree import Node, RenderTree
 nodes:Node
@@ -66,7 +69,7 @@ def get_event(subrun=0, event=1):
     return (pl.col('subrun')==subrun) & (pl.col('event') == event)
 
 
-def merge_same_df(dataframes:list, filter_function=None, select_function=None):
+def merge_same_df(dataframes:list, filter_function=None, select_function=None, df_concat = pl.DataFrame(), **kwargs):
     """
     Merged list of dataframe and return it as a dataframe
 
@@ -77,9 +80,13 @@ def merge_same_df(dataframes:list, filter_function=None, select_function=None):
         User defined function for filtering
     select_function
         User defined selection
+    df_concat
+        In case some selection is being done, df_concat is the dataframe to be concaternated
+        Example of this is a dataframe with subrun and event to be used as filter
+    kwargs
+        Arguments to be passed to `join` with df_concat
 
-    If nothing is passed, no filter is applying and all columns are selected
-
+    If nothing is passed for filter and selection, no filter is applying and all columns are selected
     """
 
     def filtering():
@@ -97,12 +104,40 @@ def merge_same_df(dataframes:list, filter_function=None, select_function=None):
     merged:pl.DataFrame
     merged = 0
     for i, df in enumerate(dataframes):
-        df = df.filter(filtering()).collect()
+        df = df.filter(filtering()).select(selecting())
+        if not df_concat.is_empty():
+            df = df.join(df_concat.lazy(), **kwargs)
+        df = df.collect()
         if i == 0:
             merged = df
         else:
             merged = pl.concat([merged,df])
     return merged
+
+def check_fiducial(label:str, safe_x =20, safe_y=20, safe_z=20):
+    limit_x = 363 - safe_x
+    limit_y = 608 - safe_y
+    upper_z = 1394 - safe_z
+    lower_z = 0 + safe_z
+    coord:str
+    coord = ''
+    coord_end = ''
+    if label == 'pandoraTrack':
+        coord = 'trkstart$_pandoraTrack'
+        coord_end = coord.replace('start','end')
+    elif 'pandoraShower' in label:
+        coord = 'shwr_startx_pandoraShower'
+        coord_end = coord.replace('start','end')
+    elif 'geant' in label:
+        coord = 'StartPoint$_'+label
+        coord_end = 'EndPoint$_'+label
+    else:
+        return False
+    return  (pl.col(coord.replace('$','x')).abs() < limit_x) & (pl.col(coord_end.replace('$','x')).abs() < limit_x) &\
+            (pl.col(coord.replace('$','y')).abs() < limit_y) & (pl.col(coord_end.replace('$','y')).abs() < limit_y) &\
+            (pl.col(coord.replace('$','z')).abs() < upper_z) & (pl.col(coord_end.replace('$','z')).abs() < upper_z) &\
+            (pl.col(coord.replace('$','z')).abs() > lower_z) & (pl.col(coord_end.replace('$','z')).abs() > lower_z)
+
 
 
 def make_tree(df:pl.DataFrame, subrun, event):
@@ -223,3 +258,19 @@ def print_tree(nu:pl.DataFrame, geant:pl.DataFrame, nodes:Node, subrun:int, even
                 extra_info = geant_info.select(pl.col(val)).item()
                 print(f"{key} = {extra_info:.2f};", end=" ")
             print("")
+
+def load_caf(file, save_it=False):
+    rejections = ["Jagged", "Objects", "Group"]
+    df:pl.DataFrame
+    df = 0
+    with uproot.open(file) as f:
+        tree = f['cafTree']
+        cols = [key for key in tree.keys() if not any([ x in str(tree[key].interpretation) for x in rejections])]
+        data = f['cafTree'].arrays(cols, library='np')
+    df = pl.from_pandas(pd.DataFrame(data))
+    for c in df.columns:
+        df = df.rename({c: c.replace("/",".")})
+    if save_it:
+        file = file.replace('.root', '.parquet')
+        df.write_parquet(file)
+    return df
