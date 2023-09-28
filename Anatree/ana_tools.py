@@ -4,6 +4,7 @@ import polars as pl
 import particle
 import uproot
 import pandas as pd
+from tqdm import tqdm
 
 from anytree import Node, RenderTree
 nodes:Node
@@ -140,7 +141,7 @@ def check_fiducial(label:str, safe_x =20, safe_y=20, safe_z=20):
 
 
 
-def make_tree(df:pl.DataFrame, subrun, event):
+def make_tree(df:pl.LazyFrame, subrun, event):
     nodes = {}
     def add_nodes(nodes, parent, child):
         if parent not in nodes:
@@ -156,7 +157,7 @@ def make_tree(df:pl.DataFrame, subrun, event):
     return nodes
 
 
-def print_tree(nu:pl.DataFrame, geant:pl.DataFrame, nodes:Node, subrun:int, event:int, maxlevel=2, particle_id = 0, only_ancestor=False, **kwargs):
+def print_tree(nu:pl.DataFrame, geant:pl.LazyFrame, nodes:Node, subrun:int, event:int, maxlevel=2, particle_id = 0, only_ancestor=False, **kwargs):
     """
     Function to print nodes tree to see events. 
     
@@ -267,6 +268,7 @@ def load_caf(file, save_it=False):
         tree = f['cafTree']
         cols = [key for key in tree.keys() if not any([ x in str(tree[key].interpretation) for x in rejections])]
         data = f['cafTree'].arrays(cols, library='np')
+    print('Converting to polars')
     df = pl.from_pandas(pd.DataFrame(data))
     for c in df.columns:
         df = df.rename({c: c.replace("/",".")})
