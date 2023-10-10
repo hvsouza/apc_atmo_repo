@@ -29,8 +29,9 @@ class Anatree:
 
     def _setup_nutree(self):
         print("Loading nu infos")
-        cols = ['nuPDG_truth','ccnc_truth','subrun','event', 'nuWeight_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
-                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth', 'mode_truth']
+        cols = ['nuPDG_truth','ccnc_truth','subrun','event','nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
+                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',\
+                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth']
         
         ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
                       'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 
@@ -219,15 +220,11 @@ class Anatree:
             pl.col('pfp_parentID'),
             pl.col('pfp_isTrack').alias('has_valid_pfp'),
         )
-        self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
-        temp = temp_pfp.select(
-            pl.col('subrun'),
-            pl.col('event'),
-            pl.col('pfp_selfID'),
-            pl.col('pfp_parentID'),
-            pl.col('pfp_isShower').alias('has_valid_pfp'),
-        )
-        self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
+        if not self.reco_tracks.is_empty():
+            print(self.reco_tracks.is_empty())
+            self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
+        if not self.reco_showers.is_empty():
+            self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
 
     def get_full_reco_tracks(self, df_tracks=None, df_geant=None, df_nu=None):
         if df_tracks is None:
@@ -378,12 +375,11 @@ class Anatree:
         # self.geant = pl.DataFrame({})
         # self.reco_tracks = pl.DataFrame({})
         # self.reco_showers = pl.DataFrame({})
-        if ~concat:
-            self.nu = []
-            self.geant = []
-            self.reco_tracks = []
-            self.reco_showers = []
-            self.pfp = []
+        self.nu = []
+        self.geant = []
+        self.reco_tracks = []
+        self.reco_showers = []
+        self.pfp = []
 
 
         all_files = os.listdir(fpath)
