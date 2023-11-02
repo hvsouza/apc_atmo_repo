@@ -39,7 +39,7 @@ anatree:Anatree
 And to load the data you can use the following
 
 ``` python
-anatree = Anatree("/path/to/data/anatree_data.root, entry_stop=10000)
+anatree = Anatree("/path/to/data/anatree_data.root", entry_stop=10000)
 ```
 
 You have neutrino true information, Monte Carlo information, reconstructed tracks and showers stored  
