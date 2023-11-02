@@ -15,6 +15,7 @@ class Anatree:
         self.entry_stop = entry_stop
         if fname.endswith('.root'):
             tree = uproot.open(f"{fname}:analysistree/anatree")
+            self.tree:uproot.TTree
             self.tree = tree
         
         if load_data:
@@ -28,37 +29,53 @@ class Anatree:
 
     def _setup_nutree(self):
         print("Loading nu infos")
-        cols = ['nuPDG_truth','ccnc_truth','subrun','event', 'nuWeight_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
-                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth', 'mode_truth']
+        cols = ['nuPDG_truth','ccnc_truth','subrun','event','nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
+                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',\
+                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth']
+        
+        ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
+                      'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 
+                      'LongestTrackContNumu', 'TrackMomMethodNumu', 
+                      'RecoLepEnNumu_range', 'RecoLepEnNumu_mcs_chi2', 
+                      'RecoLepEnNumu_mcs_llhd', 'Ev_reco_nc']
+        cols = cols+ereco_cols
         arr = {}
         # nu_df = self.tree.arrays(cols, library='pd')
         # print(nu_df)
         for c in tqdm(cols):
-            a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
-            arr[c] = ak.ravel(a)
+            if c in self.tree.keys(filter_name=c):
+                a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+                arr[c] = ak.ravel(a)
 
         nu = pd.DataFrame(arr)
 
         cols_reco = ['nuvtxx','nuvtxy','nuvtxz']
-        nnuvtx = self.tree['nnuvtx'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        if 'nnuvtx' in self.tree.keys(filter_name='nnuvtx'):
+            nnuvtx = self.tree['nnuvtx'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        else:
+            self.nu = pl.from_pandas(nu)
+            return
         arr2 = {}
         arr2['subrun'] = np.repeat(arr['subrun'], nnuvtx)
         arr2['event'] = np.repeat(arr['event'], nnuvtx)
-        
+            
         for c in tqdm(cols_reco):
             a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
             arr2[c] = ak.ravel(a)
 
         nureco = pd.DataFrame(arr2)
-        
+            
         self.nu = pl.from_pandas(pd.merge(nu, nureco, how='left', on=['subrun', 'event']))
         
     def _setup_geant(self):
         print("Loading geant infos")
         subrun = self.tree['subrun'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
-        ngeant = self.tree['geant_list_size_geant'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
-
+        if 'geant_list_size_geant' in self.tree.keys(filter_name='geant_list_size_geant'):
+            ngeant = self.tree['geant_list_size_geant'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        else:
+            self.geant = pl.DataFrame()
+            return
         arr = {}
 
         arr['subrun'] = np.repeat(subrun, ngeant)
@@ -88,6 +105,9 @@ class Anatree:
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
    
+        if 'nshowers_pandoraShower' not in self.tree.keys(filter_name='nshowers_pandoraShower'):
+            self.reco_showers = pl.DataFrame()
+            return
         nshowers = self.tree['nshowers_pandoraShower'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
 
         arr = {}
@@ -98,6 +118,7 @@ class Anatree:
         cols = [key for key in self.tree.keys() if 'shwr' in key]
         cols.append('showerID_pandoraShower')
         for c in tqdm(cols):
+            if c not in self.tree.keys(filter_name=c): continue
             a = self.tree[c].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
             flat = np.concatenate(a)
             if len(flat.shape) > 1:
@@ -114,6 +135,9 @@ class Anatree:
         print("Loading track infos")
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        if 'ntracks_pandoraTrack' not in self.tree.keys(filter_name='ntracks_pandoraTrack'):
+            self.reco_tracks = pl.DataFrame()
+            return
         ntracks = self.tree['ntracks_pandoraTrack'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
 
         arr = {}
@@ -132,6 +156,7 @@ class Anatree:
         cols.remove("trkxyz_pandoraTrack")
 
         for c in tqdm(cols):
+            if c not in self.tree.keys(filter_name=c): continue
             a = self.tree[c].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
             flat = np.concatenate(a)
             if len(flat.shape) > 1:
@@ -149,6 +174,9 @@ class Anatree:
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
    
+        if 'nPFParticles' not in self.tree.keys(filter_name='nPFParticles'):
+            self.pfp = pl.DataFrame()
+            return
         npfps = self.tree['nPFParticles'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
 
         arr = {}
@@ -163,6 +191,7 @@ class Anatree:
         cols.remove('pfp_numNeutrinos')
         cols.remove('pfp_neutrinoIDs')
         for c in tqdm(cols):
+            if c not in self.tree.keys(filter_name=c): continue
             a = self.tree[c].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
             flat = np.concatenate(a)
             if 1 < len(flat.shape) <= 3:
@@ -191,15 +220,11 @@ class Anatree:
             pl.col('pfp_parentID'),
             pl.col('pfp_isTrack').alias('has_valid_pfp'),
         )
-        self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
-        temp = temp_pfp.select(
-            pl.col('subrun'),
-            pl.col('event'),
-            pl.col('pfp_selfID'),
-            pl.col('pfp_parentID'),
-            pl.col('pfp_isShower').alias('has_valid_pfp'),
-        )
-        self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
+        if not self.reco_tracks.is_empty():
+            print(self.reco_tracks.is_empty())
+            self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
+        if not self.reco_showers.is_empty():
+            self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
 
     def get_full_reco_tracks(self, df_tracks=None, df_geant=None, df_nu=None):
         if df_tracks is None:
@@ -208,7 +233,7 @@ class Anatree:
             df_geant = self.geant
         if df_nu is None:
             df_nu = self.nu
-        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkTruthMatch_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
         merged = merged.join(df_nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
         return merged
     
@@ -288,6 +313,9 @@ class Anatree:
                 if hasattr(self, file): # check if dataframe exist
                     df:pl.DataFrame
                     df = getattr(self, file)
+                    if df.is_empty():
+                        print(f'Empty data {file} frame, not saving...')
+                        continue
                     print(f'Saving {file}...')
                     df.write_parquet(f'{fpath}/{file}_{b}.parquet')
                     
@@ -347,12 +375,11 @@ class Anatree:
         # self.geant = pl.DataFrame({})
         # self.reco_tracks = pl.DataFrame({})
         # self.reco_showers = pl.DataFrame({})
-        if ~concat:
-            self.nu = []
-            self.geant = []
-            self.reco_tracks = []
-            self.reco_showers = []
-            self.pfp = []
+        self.nu = []
+        self.geant = []
+        self.reco_tracks = []
+        self.reco_showers = []
+        self.pfp = []
 
 
         all_files = os.listdir(fpath)
@@ -387,7 +414,7 @@ class Anatree:
                         df.append(dfnew)
                         setattr(self,type,df)
                 else:
-                    print(f"DataFrame '{file}' not found.")
+                    print(f"DataFrame '{type}' not found.")
 
                 # if df_types[type].is_empty():
                 # print('trying...')
