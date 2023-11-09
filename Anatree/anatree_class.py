@@ -10,28 +10,36 @@ class Anatree:
     tree:uproot.TTree
     fname: str
 
-    def __init__(self, fname:str, entry_start=None, entry_stop=None, load_data = True):
+    def __init__(self, fname:str="", entry_start:int=None, entry_stop:int=None, load_data:bool = True, tree_name:str="analysistree/anatree"):
         self.entry_start = entry_start
         self.entry_stop = entry_stop
         if fname.endswith('.root'):
-            tree = uproot.open(f"{fname}:analysistree/anatree")
+            tree = uproot.open(f"{fname}:{tree_name}")
             self.tree:uproot.TTree
             self.tree = tree
         
         if load_data:
             self.load_anatree()
 
-    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp']):
+    @classmethod
+    def from_parquet(cls, *args, **kwargs) -> 'Anatree':
+        obj = cls(load_data=False)
+        obj.read_parquet(*args, **kwargs)
+        return obj
+
+    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp', 'reco_hits']):
         if 'nu' in info: self._setup_nutree()
         if 'geant' in info: self._setup_geant()
-        if 'reco_tracks' or 'reco_tracks' in info: self._setup_reco()
+        if 'reco_tracks' in info: self._setup_reco_track()
+        if 'reco_showers' in info: self._setup_reco_shower()
+        if 'reco_hits' in info: self._setup_reco_hit()
         if 'pfp' in info: self._setup_pfp()
 
     def _setup_nutree(self):
         print("Loading nu infos")
-        cols = ['nuPDG_truth','ccnc_truth','subrun','event','nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
+        cols = ['run','subrun','event', 'nuPDG_truth','ccnc_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
                 'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',\
-                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth']
+                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth', 'nuWeight_truth']
         
         ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
                       'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 
@@ -95,17 +103,13 @@ class Anatree:
 
         self.geant = pl.from_pandas(pd.DataFrame(arr))
 
-    def _setup_reco(self):
-        self._setup_reco_shower()
-        self._setup_reco_track()
-
     def _setup_reco_shower(self):
         print("Loading shower infos")
         
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
    
-        if 'nshowers_pandoraShower' not in self.tree.keys(filter_name='nshowers_pandoraShower'):
+        if not self.tree.keys(filter_name='nshowers_pandoraShower'):
             self.reco_showers = pl.DataFrame()
             return
         nshowers = self.tree['nshowers_pandoraShower'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
@@ -135,7 +139,7 @@ class Anatree:
         print("Loading track infos")
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
-        if 'ntracks_pandoraTrack' not in self.tree.keys(filter_name='ntracks_pandoraTrack'):
+        if not self.tree.keys(filter_name='ntracks_pandoraTrack'):
             self.reco_tracks = pl.DataFrame()
             return
         ntracks = self.tree['ntracks_pandoraTrack'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
@@ -167,6 +171,28 @@ class Anatree:
             else:
                 arr[c] = flat
         self.reco_tracks = pl.from_pandas(pd.DataFrame(arr))
+
+    def _setup_reco_hit(self):
+        print("Loading hit infos")
+        run = self.tree['run'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        
+        nhits = self.tree['no_hits_stored'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+
+        arr = {}
+
+        arr['run'] = np.repeat(run, nhits)
+        arr['subrun'] = np.repeat(subrun, nhits)
+        arr['event'] = np.repeat(event, nhits)
+        cols = self.tree.keys(filter_name="hit_*")
+
+        for c in tqdm(cols):
+            if c not in self.tree.keys(filter_name=c): continue
+            a = self.tree[c].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
+            flat = np.concatenate(a)
+            arr[c] = flat
+        self.reco_hits = pl.from_pandas(pd.DataFrame(arr))
 
     def _setup_pfp(self):
         print("Loading PFP infos")
