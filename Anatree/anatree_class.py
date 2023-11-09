@@ -233,7 +233,7 @@ class Anatree:
             df_geant = self.geant
         if df_nu is None:
             df_nu = self.nu
-        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkTruthMatch_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
         merged = merged.join(df_nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
         return merged
     
