@@ -37,9 +37,10 @@ class Anatree:
 
     def _setup_nutree(self):
         print("Loading nu infos")
-        cols = ['run','subrun','event', 'nuPDG_truth','ccnc_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
-                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',\
-                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth', 'nuWeight_truth']
+        cols = ['run','subrun','event', 'nuPDG_truth','ccnc_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',
+                'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',
+                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth', 'nuWeight_truth',
+                'Q2_truth', 'W_truth', 'X_truth', 'Y_truth']
         
         ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
                       'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 
@@ -246,10 +247,9 @@ class Anatree:
             pl.col('pfp_parentID'),
             pl.col('pfp_isTrack').alias('has_valid_pfp'),
         )
-        if not self.reco_tracks.is_empty():
-            print(self.reco_tracks.is_empty())
+        if hasattr(self, 'reco_tracks') and not self.reco_tracks.is_empty():
             self.reco_tracks = self.reco_tracks.join(temp, left_on=['subrun','event','trkPFParticleID_pandoraTrack'], right_on=['subrun','event','pfp_selfID'], how='left')
-        if not self.reco_showers.is_empty():
+        if hasattr(self, 'reco_showers') and not self.reco_showers.is_empty():
             self.reco_showers = self.reco_showers.join(temp, left_on=['subrun','event','shwr_PFParticleID_pandoraShower'], right_on=['subrun','event','pfp_selfID'], how='left')
 
     def get_full_reco_tracks(self, df_tracks=None, df_geant=None, df_nu=None):
@@ -259,8 +259,37 @@ class Anatree:
             df_geant = self.geant
         if df_nu is None:
             df_nu = self.nu
-        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkTruthMatch_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
         merged = merged.join(df_nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
+        return merged
+    
+    def get_full_pfp(self, df_pfp:pl.DataFrame=None, df_showers:pl.DataFrame=None, df_tracks:pl.DataFrame=None, df_geant:pl.DataFrame=None, df_nu:pl.DataFrame=None):
+        if df_tracks is None:
+            df_tracks = self.reco_tracks
+        if df_showers is None:
+            df_showers = self.reco_showers
+        if df_pfp is None:
+            df_pfp = self.reco_pfp
+        if df_geant is None:
+            df_geant = self.geant
+        if df_nu is None:
+            df_nu = self.nu
+
+        merged = df_tracks.join(df_geant, left_on=["subrun", "event", "trkg4id_pandoraTrack"], right_on=["subrun", "event", "TrackId_geant"], how="left")
+        merged = merged.join(df_nu, left_on=["subrun", "event"], right_on=["subrun", "event"], how="inner")
+
+        merged = df_pfp.drop('pfp_parentID').join(
+            merged,
+            how='left',
+            right_on=["subrun", "event", 'trkPFParticleID_pandoraTrack'],
+            left_on=["subrun", "event", 'pfp_selfID']
+            ).join(
+            df_showers,
+            how='left',
+            right_on=["subrun", "event", 'shwr_PFParticleID_pandoraShower'],
+            left_on=["subrun", "event", 'pfp_selfID']
+        )
+
         return merged
     
     def load_dqdx(self):
