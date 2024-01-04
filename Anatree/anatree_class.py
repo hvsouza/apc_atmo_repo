@@ -31,7 +31,7 @@ class Anatree:
         print("Loading nu infos")
         cols = ['nuPDG_truth','ccnc_truth','subrun','event','nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',\
                 'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',\
-                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth']
+                'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth', 'nuWeight_truth', 'pot']
         
         ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
                       'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 
