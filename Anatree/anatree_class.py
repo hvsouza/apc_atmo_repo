@@ -40,7 +40,7 @@ class Anatree:
         cols = ['run','subrun','event', 'nuPDG_truth','ccnc_truth', 'nuvtxx_truth','nuvtxy_truth','nuvtxz_truth',
                 'enu_truth','nu_dcosx_truth','nu_dcosy_truth','nu_dcosz_truth',
                 'lep_mom_truth', 'lep_dcosx_truth', 'lep_dcosy_truth', 'lep_dcosz_truth', 'mode_truth', 'nuWeight_truth',
-                'Q2_truth', 'W_truth', 'X_truth', 'Y_truth']
+                'Q2_truth', 'W_truth', 'X_truth', 'Y_truth', 'pot']
         
         ereco_cols = ['Ev_reco_nue', 'RecoLepEnNue', 'RecoHadEnNue', 'RecoMethodNue', 
                       'Ev_reco_numu', 'RecoLepEnNumu', 'RecoHadEnNumu', 'RecoMethodNumu', 

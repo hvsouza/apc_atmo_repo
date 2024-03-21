@@ -44,6 +44,20 @@ def get1Dcred(values, cred):
     idx = np.searchsorted(cum_ratio, cred)
     return id_sorted[:idx]
 
+def get1Dcred_median(vals:np.ndarray, cred=0.68):
+    cum_ratio = (np.cumsum(vals)/vals.sum())
+
+    binmedian = len(cum_ratio[cum_ratio<=0.5])-1
+    bin_id = np.arange(len(cum_ratio))
+    bin_min = bin_id[cum_ratio<=0.5-cred/2.]
+    bin_max = bin_id[cum_ratio<0.5+cred/2]
+    bin_max = bin_max[-1]
+    if len(bin_min) > 0: # if low benning, all values will be false 
+        bin_min = bin_min[-1]
+    else:
+        bin_min = 0
+
+    return binmedian, bin_min, bin_max
 def selection_events(extras = ['']):
     """
     Use this to quickly use subrun and event
