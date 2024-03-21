@@ -27,7 +27,7 @@ class Anatree:
         obj.read_parquet(*args, **kwargs)
         return obj
 
-    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp', 'reco_hits']):
+    def load_anatree(self, info=['nu', 'geant', 'reco_tracks', 'reco_showers', 'pfp']):
         if 'nu' in info: self._setup_nutree()
         if 'geant' in info: self._setup_geant()
         if 'reco_tracks' in info: self._setup_reco_track()
@@ -56,7 +56,7 @@ class Anatree:
                 a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
                 arr[c] = ak.ravel(a)
 
-        nu = pd.DataFrame(arr)
+        
 
         cols_reco = ['nuvtxx','nuvtxy','nuvtxz']
         if 'nnuvtx' in self.tree.keys(filter_name='nnuvtx'):
@@ -64,17 +64,20 @@ class Anatree:
         else:
             self.nu = pl.from_pandas(nu)
             return
-        arr2 = {}
-        arr2['subrun'] = np.repeat(arr['subrun'], nnuvtx)
-        arr2['event'] = np.repeat(arr['event'], nnuvtx)
+        # arr2 = {}
+        # arr2['subrun'] = np.repeat(arr['subrun'], nnuvtx)
+        # arr2['event'] = np.repeat(arr['event'], nnuvtx)
+
             
         for c in tqdm(cols_reco):
             a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
-            arr2[c] = ak.ravel(a)
+            arr[c] = ak.fill_none(ak.firsts(a), -999)
 
-        nureco = pd.DataFrame(arr2)
+        nu = pd.DataFrame(arr)
+
+        # nureco = pd.DataFrame(arr2)
             
-        self.nu = pl.from_pandas(pd.merge(nu, nureco, how='left', on=['subrun', 'event']))
+        self.nu = pl.from_pandas(nu)
         
     def _setup_geant(self):
         print("Loading geant infos")
@@ -82,6 +85,19 @@ class Anatree:
         event = self.tree['event'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
         if 'geant_list_size_geant' in self.tree.keys(filter_name='geant_list_size_geant'):
             ngeant = self.tree['geant_list_size_geant'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+            cols = [key for key in self.tree.keys() if 'geant' in key]
+            cols.remove("no_primaries_geant")
+            cols.remove("geant_list_size_geant")
+            cols.remove("geant_list_size_in_tpcAV_geant")
+        elif 'geant_list_size' in self.tree.keys(filter_name='geant_list_size'):
+            ngeant = self.tree['geant_list_size'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+            cols = ['pdg', 'status',
+        'Mass', 'Eng', 'EndE', 'Px', 'Py', 'Pz', 'P', 'StartPointx', 'StartPointy', 'StartPointz', 'StartT', 'EndPointx', 'EndPointy', 'EndPointz', 'EndT', 'theta', 'phi', 'theta_xz', 'theta_yz', 'pathlen', 'inTPCActive', 'StartPointx_tpcAV', 'StartPointy_tpcAV',
+        'StartPointz_tpcAV', 'StartT_tpcAV', 'StartE_tpcAV', 'StartP_tpcAV', 'StartPx_tpcAV', 'StartPy_tpcAV', 'StartPz_tpcAV', 'EndPointx_tpcAV', 'EndPointy_tpcAV',
+        'EndPointz_tpcAV', 'EndT_tpcAV', 'EndE_tpcAV', 'EndP_tpcAV', 'EndPx_tpcAV', 'EndPy_tpcAV', 'EndPz_tpcAV', 'pathlen_drifted', 'inTPCDrifted', 'StartPointx_drifted', 'StartPointy_drifted',
+        'StartPointz_drifted', 'StartT_drifted', 'StartE_drifted', 'StartP_drifted', 'StartPx_drifted', 'StartPy_drifted', 'StartPz_drifted', 'EndPointx_drifted',
+        'EndPointy_drifted', 'EndPointz_drifted', 'EndT_drifted', 'EndE_drifted', 'EndP_drifted', 'EndPx_drifted', 'EndPy_drifted', 'EndPz_drifted',
+        'NumberDaughters', 'Mother', 'TrackId', 'MergedId', 'origin', 'MCTruthIndex', 'process_primary', 'processname']
         else:
             self.geant = pl.DataFrame()
             return
@@ -91,11 +107,6 @@ class Anatree:
         arr['event'] = np.repeat(event, ngeant)
 
         # idx = pd.MultiIndex.from_arrays([[subrun[i] for i in range(len(ngeant)) for _ in range(ngeant[i])], [event[i] for i in range(len(ngeant)) for j in range(ngeant[i])]], names=("subrun", "ebent"))
-
-        cols = [key for key in self.tree.keys() if 'geant' in key]
-        cols.remove("no_primaries_geant")
-        cols.remove("geant_list_size_geant")
-        cols.remove("geant_list_size_in_tpcAV_geant")
         
         for c in tqdm(cols):
             a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
@@ -103,6 +114,8 @@ class Anatree:
             arr[c] = ak.ravel(a)
 
         self.geant = pl.from_pandas(pd.DataFrame(arr))
+        if 'pdg' in self.geant.columns:
+            self.geant = self.geant.rename({col : f"{col}_geant" for col in cols})
 
     def _setup_reco_shower(self):
         print("Loading shower infos")
@@ -269,7 +282,7 @@ class Anatree:
         if df_showers is None:
             df_showers = self.reco_showers
         if df_pfp is None:
-            df_pfp = self.reco_pfp
+            df_pfp = self.pfp
         if df_geant is None:
             df_geant = self.geant
         if df_nu is None:

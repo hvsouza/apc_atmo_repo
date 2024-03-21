@@ -63,7 +63,6 @@ def selection_events(extras = ['']):
     r = ['subrun', 'event']
     if extras != ['']:
         r = r + extras
-    print(r)
     return r
 
 def get_event(subrun=0, event=1):
@@ -361,6 +360,33 @@ def trkke() -> pl.Expr:
         pl.when(pl.col('trkke_pandoraTrack_z') > 0).then(pl.col('trkke_pandoraTrack_z')).otherwise(None)
     ).list.max()
 
+def shwr_E(method = 'bestplane') -> pl.Expr:
+    if method == 'bestplane':
+        return pl.when(
+            pl.col("shwr_bestplane_pandoraShower") == 0
+            ).then(
+                pl.col("shwr_totEng_pandoraShower_x")
+            ).otherwise(
+                pl.when(
+                    pl.col("shwr_bestplane_pandoraShower") == 1
+                ).then(
+                    pl.col("shwr_totEng_pandoraShower_y")
+                ).otherwise(
+                    pl.col("shwr_totEng_pandoraShower_z")
+                )
+            )
+    elif method == 'max':
+        return pl.concat_list(
+        pl.when(pl.col('shwr_totEng_pandoraShower_x') > 0).then(pl.col('shwr_totEng_pandoraShower_x')).otherwise(None),
+        pl.when(pl.col('shwr_totEng_pandoraShower_y') > 0).then(pl.col('shwr_totEng_pandoraShower_y')).otherwise(None),
+        pl.when(pl.col('shwr_totEng_pandoraShower_z') > 0).then(pl.col('shwr_totEng_pandoraShower_z')).otherwise(None)
+    ).list.max()
+
+    else:
+        print(f"unknown method {method} for shower E reco!")
+        exit()
+    
+
 def create_division(df:pl.DataFrame, particle, axes = ['x','y','z']):
     list_ndf = [f'trkpidndf_pandoraTrack_{ax}' for ax in axes]
 
@@ -417,3 +443,9 @@ def particle_selection(df:pl.DataFrame, type='av'):
 def manual_std(data:np.ndarray) -> float:
     a, b = np.quantile(data, [0.16, 0.84], method='linear')
     return (b - a)/2
+
+def vtx_dist():
+    return (
+        (pl.col("nuvtxx_truth") - pl.col("nuvtxx"))**2 + 
+        (pl.col("nuvtxy_truth") - pl.col("nuvtxy"))**2 +
+        (pl.col("nuvtxz_truth") - pl.col("nuvtxz"))**2).sqrt()
