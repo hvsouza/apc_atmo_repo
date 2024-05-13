@@ -454,9 +454,6 @@ def particle_selection(df:pl.DataFrame, type='av'):
 
     return df
 
-def manual_std(data:np.ndarray) -> float:
-    a, b = np.quantile(data, [0.16, 0.84], method='linear')
-    return (b - a)/2
 
 def vtx_dist():
     return (

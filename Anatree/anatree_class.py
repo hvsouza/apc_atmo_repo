@@ -167,11 +167,10 @@ class Anatree:
         exclusion_list = ['cosmic', 'T0', 'momms', 'pidmva', 'evtxid']  #all this are empty
         cols = [x for x in cols if all(exclusion_item not in x for exclusion_item in exclusion_list)]
         cols.append('trkId_pandoraTrack')
-        cols.remove("trkdedx_pandoraTrack")
-        cols.remove("trkdqdx_pandoraTrack")
-        cols.remove("trkresrg_pandoraTrack")
-        cols.remove("trktpc_pandoraTrack")
-        cols.remove("trkxyz_pandoraTrack")
+        trackremove = [ "trkdedx_pandoraTrack", "trkdqdx_pandoraTrack", "trkresrg_pandoraTrack", "trktpc_pandoraTrack", "trkxyz_pandoraTrack"]
+        for trm in trackremove:
+            if trm in cols:
+                cols.remove(trm)
 
         for c in tqdm(cols):
             if c not in self.tree.keys(filter_name=c): continue
@@ -192,6 +191,10 @@ class Anatree:
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         
+        if not self.tree.keys(filter_name='no_hits_stored'):
+            self.reco_hits = pl.DataFrame()
+            return
+
         nhits = self.tree['no_hits_stored'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
 
         arr = {}
