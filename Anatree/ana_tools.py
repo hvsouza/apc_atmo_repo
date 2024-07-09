@@ -56,11 +56,10 @@ def get1Dcred_median(vals:np.ndarray, cred=0.68):
         bin_min = bin_min[-1]
     else:
         bin_min = 0
-
     return binmedian, bin_min, bin_max
 def selection_events(extras = ['']):
     """
-    Use this to quickly use subrun and event
+    Use this to quickly use subrun(run) and event
     Ex: df.groupby(selection_events()).agg(
     ...
     )
@@ -74,16 +73,32 @@ def selection_events(extras = ['']):
     """
     if not isinstance(extras, list):
         extras = [extras]
-    r = ['subrun', 'event']
+    r = ['run', 'subrun', 'event']
     if extras != ['']:
+        if 'run' in extras:
+            extras.remove('run')
         r = r + extras
     return r
+
+def filter_event(run=0, subrun=0, event=0):
+    """
+    Quick function to get you a specific event
+    Set event=-1 to not filter it
+    """
+    if event!=-1:
+        return (pl.col('run')==run) & (pl.col('subrun')==subrun) & (pl.col('event') == event)
+    else:
+        return (pl.col('run')==run) & (pl.col('subrun')==subrun)
 
 def get_event(subrun=0, event=1):
     """
     Quick function to get you a specific event
+    Set event=-1 to not filter it
     """
-    return (pl.col('subrun')==subrun) & (pl.col('event') == event)
+    if event!=-1:
+        return (pl.col('subrun')==subrun) & (pl.col('event') == event)
+    else:
+        return (pl.col('subrun')==subrun)
 
 
 def merge_same_df(dataframes:list, filter_function=None, select_function=None, df_concat = pl.DataFrame(), **kwargs):
@@ -148,8 +163,12 @@ def check_fiducial(label:str, safe_x =20, safe_y=20, safe_z=20):
     elif 'geant' in label:
         coord = 'StartPoint$_'+label
         coord_end = 'EndPoint$_'+label
+    elif 'truth' == label:
+        coord = 'nuvtx$_'+label
+        coord_end = 'nuvtx$_'+label
     else:
         return False
+
     return  (pl.col(coord.replace('$','x')).abs() < limit_x) & (pl.col(coord_end.replace('$','x')).abs() < limit_x) &\
             (pl.col(coord.replace('$','y')).abs() < limit_y) & (pl.col(coord_end.replace('$','y')).abs() < limit_y) &\
             (pl.col(coord.replace('$','z')).abs() < upper_z) & (pl.col(coord_end.replace('$','z')).abs() < upper_z) &\
@@ -348,10 +367,13 @@ def proton_momentum_by_range(trkrange:pl.Expr) -> pl.Expr:
 
     return (KE.pow(2) + 2*proton_mass*KE).sqrt()/1000
 
-def manual_std(data:np.ndarray) -> float:
-    a, b = np.quantile(data, [0.16, 0.84], method='linear')
+def manual_std(data:np.ndarray, quant=[0.16,0.84]) -> float:
+    a, b = np.quantile(data, quant, method='linear')
     return (b - a)/2
 
+def manual_quant(data:np.ndarray, quant=0.16) -> float:
+    a = np.quantile(data, quant, method='linear')
+    return a
 def is_primary_reco() -> pl.Expr:
     return (pl.col('pfp_parentID') == -1) & (pl.col('pfp_isNeutrino') == 0)
 
