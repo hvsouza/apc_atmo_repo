@@ -55,9 +55,6 @@ class Anatree:
             if c in self.tree.keys(filter_name=c):
                 a = self.tree[c].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
                 arr[c] = ak.ravel(a)
-
-        
-
         cols_reco = ['nuvtxx','nuvtxy','nuvtxz']
         if 'nnuvtx' in self.tree.keys(filter_name='nnuvtx'):
             nnuvtx = self.tree['nnuvtx'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
@@ -81,14 +78,15 @@ class Anatree:
         
     def _setup_geant(self):
         print("Loading geant infos")
+        run = self.tree['run'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
         subrun = self.tree['subrun'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
-        if 'geant_list_size_geant' in self.tree.keys(filter_name='geant_list_size_geant'):
-            ngeant = self.tree['geant_list_size_geant'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
+        if 'geant_list_size' in self.tree.keys(filter_name='geant_list_size'):
+            ngeant = self.tree['geant_list_size'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
             cols = [key for key in self.tree.keys() if 'geant' in key]
             cols.remove("no_primaries_geant")
-            cols.remove("geant_list_size_geant")
-            cols.remove("geant_list_size_in_tpcAV_geant")
+            cols.remove("geant_list_size")
+            cols.remove("geant_list_size_in_tpcAV")
         elif 'geant_list_size' in self.tree.keys(filter_name='geant_list_size'):
             ngeant = self.tree['geant_list_size'].array(library='ak', entry_start = self.entry_start, entry_stop = self.entry_stop)
             cols = ['pdg', 'status',
@@ -103,6 +101,7 @@ class Anatree:
             return
         arr = {}
 
+        arr['run'] = np.repeat(run, ngeant)
         arr['subrun'] = np.repeat(subrun, ngeant)
         arr['event'] = np.repeat(event, ngeant)
 
@@ -120,6 +119,7 @@ class Anatree:
     def _setup_reco_shower(self):
         print("Loading shower infos")
         
+        run = self.tree['run'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
    
@@ -130,6 +130,7 @@ class Anatree:
 
         arr = {}
 
+        arr['run'] = np.repeat(run, nshowers)
         arr['subrun'] = np.repeat(subrun, nshowers)
         arr['event'] = np.repeat(event, nshowers)
 
@@ -151,6 +152,7 @@ class Anatree:
 
     def _setup_reco_track(self):
         print("Loading track infos")
+        run = self.tree['run'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         if not self.tree.keys(filter_name='ntracks_pandoraTrack'):
@@ -160,6 +162,7 @@ class Anatree:
 
         arr = {}
 
+        arr['run'] = np.repeat(run, ntracks)
         arr['subrun'] = np.repeat(subrun, ntracks)
         arr['event'] = np.repeat(event, ntracks)
         cols = [key for key in self.tree.keys() if 'trk' in key]
@@ -214,6 +217,7 @@ class Anatree:
     def _setup_pfp(self):
         print("Loading PFP infos")
         
+        run = self.tree['run'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         subrun = self.tree['subrun'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
         event = self.tree['event'].array(library='np', entry_start = self.entry_start, entry_stop = self.entry_stop)
    
@@ -224,6 +228,7 @@ class Anatree:
 
         arr = {}
 
+        arr['run'] = np.repeat(run, npfps)
         arr['subrun'] = np.repeat(subrun, npfps)
         arr['event'] = np.repeat(event, npfps)
 
