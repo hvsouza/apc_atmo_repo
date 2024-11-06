@@ -57,7 +57,7 @@ def get1Dcred_median(vals:np.ndarray, cred=0.68):
     else:
         bin_min = 0
     return binmedian, bin_min, bin_max
-def selection_events(extras = ['']):
+def selection_events(*extras):
     """
     Use this to quickly use subrun(run) and event
     Ex: df.groupby(selection_events()).agg(
@@ -67,20 +67,25 @@ def selection_events(extras = ['']):
     df.groupby(selection_events(['some_column','another'])).agg(
     ...
     )
+    Or
+    df.groupby(selection_events('some_column','another')).agg(
+    
 
     Also works with `pl.DataFrame.select`
 
     """
-    if not isinstance(extras, list):
-        extras = [extras]
-    r = ['run', 'subrun', 'event']
-    if extras != ['']:
-        if 'run' in extras:
-            extras.remove('run')
-        r = r + extras
+    
+    base = ['run', 'subrun', 'event']
+    r = base.copy()
+    for extra in extras:
+        if not isinstance(extra, list):
+            if extra in base: continue
+            extra = [extra]
+        extra = [ x for x in extra if x not in base ] 
+        r = r + extra
     return r
 
-def filter_event(run=0, subrun=0, event=0):
+def filter_event(run=0, subrun=1, event=-1):
     """
     Quick function to get you a specific event
     Set event=-1 to not filter it
