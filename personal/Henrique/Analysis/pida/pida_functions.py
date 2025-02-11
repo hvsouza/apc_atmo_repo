@@ -1,4 +1,5 @@
 import polars as pl
+from matplotlib.lines import Line2D
 import sys
 import os
 import particle
@@ -9,8 +10,7 @@ sys.path.append(f'/home/{user_name}/Documents/Atmos_Pandora/apc_atmo_repo/Anatre
 from  ana_tools import *
 
 
-def getbestof(df:pl.DataFrame ) -> pl.DataFrame:
-    df:pl.DataFrame
+def getbestof(df:pl.LazyFrame ) -> pl.LazyFrame:
     dftmp = df.group_by(selection_events(), maintain_order=True).agg(
         pl.col('^trkcalo_.*$').sum(),
         pl.col('^trknhits_.*$').sum(),
@@ -64,8 +64,11 @@ def getbestof(df:pl.DataFrame ) -> pl.DataFrame:
         )
     return df
 
-def ismu():
-    return pl.col('trkg4pdg_planes_B').abs()==13
+def ismu(plane="B"):
+    return pl.col(f'trkg4pdg_planes_{plane}').abs()==13
+    
+def ise(plane="B"):
+    return pl.col(f'trkg4pdg_planes_{plane}').abs()==11
 
 
 # I tried 1e3 cut, virtually no change...
@@ -221,7 +224,7 @@ def create_mucandidates_2(df:pl.DataFrame,
     df = get_options(df)
     dfallcontained = df.filter(
         (pl.col(calovariable) >= calocut) & ~(pl.col('trkIsContained')) & (pl.col('noptions')>1)
-    ).group_by(selection_events()).agg(
+    ).group_by(selection_events(), maintain_order=True).agg(
     ).with_columns(
         pl.lit(False).alias('allcontained')
     )
@@ -274,7 +277,7 @@ def create_mucandidates_2(df:pl.DataFrame,
         dfrest = dfrest.filter(
             ~((pl.col('trklen') >= cut) & (pl.col('noptions')>1)),
         )
-        dfrestselected = dfrest.sort('trklen').group_by(selection_events()).agg(
+        dfrestselected = dfrest.sort('trklen').group_by(selection_events(), maintain_order=True).agg(
             pl.col('trkId').last()
         )
         dfselected = pl.concat([dfselected, dfrestselected], how='vertical', rechunk=False)
@@ -314,17 +317,27 @@ def get_all_the_rest(dffull:pl.DataFrame, dfcutted:pl.DataFrame):
 def create_proton_candidate(df:pl.DataFrame,
                             cut_pida_easy=10,
                             cut_pida_easy_shower=13,
-                            maxmom=1.5,
-                            maxcalo=0.8,
+                            maxmom=2, #changed after review...
+                            maxcalo=1.5,
                             apply_shower_filter=False,
                             nopt_shower_filter=3,
                             cheat=False,
                             cheatMinPNC=0.,
-                            ):
+                            return_only_selected=True,
+                            ) -> pl.DataFrame:
+    dforiginal = df
+    if 'selected_mu' in df.columns:
+        df = df.filter(
+            ~pl.col('selected_mu'),
+        )
+    if 'selected_e' in df.columns:
+        df = df.filter(
+            ~pl.col('selected_e'),
+        )
     df = df.filter(
-        ~pl.col('selected_mu'),
         pl.col('trklen')>0,
     )
+
 
     if not cheat:
         df = get_options(df)
@@ -350,8 +363,11 @@ def create_proton_candidate(df:pl.DataFrame,
     df = df.with_columns(
         pl.lit(True).alias('selected_pr')
     )
-    return df
+    if return_only_selected:
+        return df
 
+    dforiginal = join_df_with_selected(dforiginal, df, t='pr') 
+    return dforiginal
 
 def create_pion_candidate(df:pl.DataFrame,
                           minimum_options_after_remove_mu=2,
@@ -362,13 +378,23 @@ def create_pion_candidate(df:pl.DataFrame,
                           othercuts=True,
                           cheat=False,
                           cheatMinPNC=0.,
-                          ):
+                          return_only_selected=True,
+                          lower_threshold_len=3.5,
+                          higher_threshold_len=350,
+                          threshold_not_contained=10,
+                          ) -> pl.DataFrame:
+    dforiginal = df
     df = df.filter(
         pl.col('trklen')>0,
     )
-    df = df.filter(
-        ~pl.col('selected_mu'),
-    )
+    if 'selected_mu' in df.columns:
+        df = df.filter(
+            ~pl.col('selected_mu'),
+        )
+    if 'selected_e' in df.columns:
+        df = df.filter(
+            ~pl.col('selected_e'),
+        )
     df = get_options(df)
     dfwithpr = df.filter(pl.col('selected_pr')).group_by(selection_events()).agg(
         pl.col('selected_pr').count().alias('npr'),
@@ -390,7 +416,11 @@ def create_pion_candidate(df:pl.DataFrame,
         df = df.with_columns(
             pl.lit(True).alias('selected_pi')
         )
-        return df
+
+        if return_only_selected:
+            return df
+        else:
+            return join_df_with_selected(dforiginal, df, 'pi')
 
     df = df.filter(
         ~pl.col('selected_pr'),
@@ -406,16 +436,19 @@ def create_pion_candidate(df:pl.DataFrame,
 
     if othercuts:
         df = df.filter(
-            ((pl.col('trklen')).is_between(3.5, 350))
+            ((pl.col('trklen')).is_between(lower_threshold_len, higher_threshold_len))
         ).filter(
-            ~((~pl.col('trkIsContained')) & (pl.col('trklen')<10))
+            ~((~pl.col('trkIsContained')) & (pl.col('trklen')<threshold_not_contained))
         )
 
     df = df.with_columns(
         pl.lit(True).alias('selected_pi')
     )
 
-    return df
+    if return_only_selected:
+        return df
+    else:
+        return join_df_with_selected(dforiginal, df, 'pi')
 
 
 def K_mu_cont():
@@ -457,7 +490,7 @@ def simple_energy(df:pl.DataFrame,
     ).with_columns(
         Etotal = pl.col("Elep") + pl.col("Ehad")
     )
-    df = df.sort(selection_events('selected_mu')).group_by(selection_events()).agg(
+    df = df.sort(selection_events('selected_mu')).group_by(selection_events(), maintain_order=True).agg(
         pl.all().last(),
         (pl.col('selected_mu').last()).alias('hasmu'),
         (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
@@ -544,6 +577,7 @@ def complex_energy2(df:pl.DataFrame,
     df = df.sort('selected_mu').group_by(selection_events(),maintain_order=True).agg(
         pl.col('selected_mu').filter(pl.col('selected_mu')).any(),
         pl.col('enu_truth').last(),
+        pl.col('enuvis_truth').last(),
         pl.col('lepen').last(),
         (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
         pl.col(f'otherallcalo_planes_{W}').last(),
@@ -555,15 +589,18 @@ def complex_energy2(df:pl.DataFrame,
         (pl.col('npi').last()*0.1393).alias('mass_to_add'),
     ).with_columns(
         Elep = pl.col('Kmu')+0.1057,
-        Ehad = pl.col('Kpr') + pl.col('Kpi') + pl.col('OtherPFPs') + pl.col('mass_to_add') + pl.col(f'otherallcalo_planes_{W}'),
+        Ehad_nomass = pl.col('Kpr') + pl.col('Kpi') + pl.col('OtherPFPs') + pl.col(f'otherallcalo_planes_{W}'),
     ).with_columns(
-        Etotal = pl.col("Elep") + pl.col("Ehad")
-        # Etotal = pl.col('Kmu') + pl.col('Kpr') + pl.col('Kpi') + pl.col('OtherPFPs') + pl.col('mass_to_add') + pl.col(f'otherallcalo_planes_{W}'),
+        Etotal_nomass = pl.col("Elep") + pl.col("Ehad_nomass"),
+        Etotal = pl.col("Elep") + pl.col("Ehad_nomass") + pl.col('mass_to_add'),
+        Ehad = pl.col('Ehad_nomass') + pl.col('mass_to_add'),
     )
     return df
 
 
 def get_n_prpi(df:pl.DataFrame):
+
+    df = df.drop('npi', 'npr')
 
     dfwith = df.filter(pl.col('selected_pr')).group_by(selection_events()).agg(
         pl.col('selected_pr').count().alias('npr'),
@@ -583,6 +620,15 @@ def get_n_prpi(df:pl.DataFrame):
     )
     return df
 
+def join_df_with_selected(df:pl.DataFrame, df_selected:pl.DataFrame, t='mu'):
+    df = df.join(df_selected, on=selection_events('trkId'), how='left', coalesce=True).with_columns(
+        pl.col(f'selected_{t}').fill_null(False)
+    ).select(
+        pl.all().exclude("^.*_right$")
+    )
+    return df
+    
+
 def join_pi_candidate(df_pi:pl.DataFrame, df:pl.DataFrame, t='pi'):
     df = df.join(df_pi.select(selection_events('trkId', f'selected_{t}')), on=selection_events('trkId'), how='left', coalesce=True)
     df = df.with_columns(
@@ -591,3 +637,291 @@ def join_pi_candidate(df_pi:pl.DataFrame, df:pl.DataFrame, t='pi'):
     df = get_n_prpi(df)
     return df
 
+
+def isShower():
+    return ~pl.col('trkPFPIsTrack')
+def isTrack():
+    return pl.col('trkPFPIsTrack')
+    
+
+def plot_pid(df:pl.DataFrame,
+            plane="B",
+            pida = "trkpidpida",
+            actual_variable = None,
+            pdg=2212,
+            binspid = np.linspace(0,40,200),
+            notthispdg=False,
+            threshold_pnc = 0.85,
+            ShowersAndTracks=False,
+            onlyShower=False,
+            onlycontained=True,
+            label="",
+            onlyselected=True,
+            **kwargs_hist,
+            ):
+    
+    if threshold_pnc==0:
+        threshold_pnc=-1e12
+    title = f'Plane {plane}'
+    if plane=="B":
+        # df = getbestof(df, 'trkg4pdg_planes')
+        # df = getbestof(df, 'trkpidpida')
+        # df = getbestof(df, 'trkpurity_planes')
+        # df = getbestof(df, 'trkcompleteness_planes')
+        title = 'Best plane'
+        title = ''
+
+    if onlyselected and 'selected' in df.columns:
+        df = df.filter(
+            pl.col('selected')
+        )
+    trkpdg = f"trkg4pdg_planes_{plane}"
+    if (pdg != -1):
+        if (notthispdg):
+            df = df.filter(pl.col(trkpdg).abs()!=pdg)
+        else:
+            df = df.filter(pl.col(trkpdg).abs()==pdg)
+        particlename = particle.Particle.from_pdgid(pdg).latex_name
+        particlename = particlename.strip("^{+}")
+        particlename = particlename.strip("^{-}")
+    else:
+        df = df.filter(
+            pl.col(trkpdg).abs()!=2212,
+            pl.col(trkpdg).abs()!=211,
+            pl.col(trkpdg).abs()!=13,
+        )
+        particlename='others'
+        
+    df = df.filter(
+        pl.col(f'trkpurity_planes_{plane}') >= threshold_pnc,
+        pl.col(f'trkcompleteness_planes_{plane}') >= threshold_pnc,
+        (ShowersAndTracks) | (pl.col('trkPFPIsTrack')),
+        (not onlyShower) | ~(pl.col('trkPFPIsTrack')),
+        ((not onlycontained) | pl.col(f'trkIsContained'))
+    )
+    if notthispdg:
+        label = r'not ${{{}}}$'.format(particlename) + label
+    else:
+        label = r'${{{}}}$'.format(particlename) + label
+        
+    pida_p = f"{pida}_{plane}"
+    if pida_p not in df.columns:
+        pida_p = pida
+
+    if actual_variable is not None:
+        data = actual_variable(df)
+    else:
+        data = df[pida_p]
+    plt.hist(data, binspid, histtype='step',label=label, **kwargs_hist)
+    # Create new legend handles but use the colors from the existing ones
+    handles, labels = plt.gca().get_legend_handles_labels()
+    new_handles = [Line2D([], [], c=h.get_edgecolor(), ls=h.get_linestyle()) for h in handles]
+    
+    plt.legend(title = title, handles=new_handles, labels=labels, fontsize=16)
+    return
+
+
+def create_ecandidate(dfstart:pl.DataFrame, clear_low_en_as_shower=True, filter_protons=True, pida_pr=15, return_only_selected=False, cheat=False):
+    df = dfstart
+    if not cheat:
+        if clear_low_en_as_shower:
+            df = df.filter(
+                True,
+                ~(( pl.col('allcalo_planes_B') >= 0.2 ) & (isTrack()))
+            )
+            
+        if filter_protons:
+            df = df.filter(
+                ~((pl.col('trkpidpida_B') > pida_pr) & (isTrack()))
+            )
+        dfbiggest = df.sort(trkcalo("W")).group_by(selection_events(), maintain_order=True).agg(
+            pl.all().last()
+        )
+    else:
+        dfbiggest = df.sort('pnc').filter(
+            isparticle(11),
+        ).group_by(selection_events(), maintain_order=True).agg(
+            pl.all().last()
+        )
+    if return_only_selected:
+        return dfbiggest
+
+    dfbiggest = dfbiggest.with_columns(
+        pl.lit(True).alias('selected_e')
+    )
+
+    dfstart = join_df_with_selected(dfstart, dfbiggest, t='e')
+    return dfstart
+
+def complex_energy_nue(df:pl.DataFrame,
+                   W="W",
+                   return_full=False,
+                   ):
+
+    df = get_n_prpi(df)
+
+    df=df.with_columns(
+        lepmom = (pl.col('lepen')**2-0.000511**2).sqrt(),
+        trkg4mom = (pl.col(f'trkg4en_planes_{W}')**2 - pl.col(f'trkg4mass_planes_{W}')**2).sqrt(),
+        trkg4K = (pl.col(f'trkg4en_planes_{W}') - pl.col(f'trkg4mass_planes_{W}')),
+        Ke = pl.when(
+            pl.col('selected_e')
+            ).then(
+                trkcalo(W)
+            ).otherwise(0),
+        Kpr = pl.when((pl.col('selected_pr'))).then(
+            pl.when(pl.col('trkmomrange_pr') > 0).then(K_from_p('trkmomrange_pr', 0.9383)).otherwise(trkcalo(W))
+        ).otherwise(0),
+        Kpi = pl.when((pl.col('selected_pi'))).then(
+            pl.when('trkIsContained').then(
+                pl.when(
+                    (pl.col('trkmomrange_mu') > 0)
+                ).then(
+                        K_mu_cont()
+                ).otherwise(trkcalo(W))
+            ).otherwise(
+                pl.when(
+                    (pl.col('trkmomllhd') > 0)
+                ).then(
+                    K_mu_notcont()
+                ).otherwise(trkcalo(W))
+            )
+        ).otherwise(0)
+    )
+
+    df = df.with_columns(
+        Ee = pl.col("Ke") + 0.000511,
+        Kpr = pl.when((pl.col('selected_pr'))).then(
+            pl.when(pl.col('Kpr')>0).then(pl.col('Kpr')).otherwise(trkcalo(W))
+        ),
+        Kpi = pl.when((pl.col('selected_pi'))).then(
+            pl.when(pl.col('Kpi')>0).then(pl.col('Kpi')).otherwise(trkcalo(W))
+        ),
+        OtherPFPs = pl.when( ~(pl.col('selected_e')) & ~(pl.col('selected_pr')) & ~(pl.col('selected_pi'))).then( trkcalo(W) ).otherwise(0)
+    )
+    if return_full:
+        return df
+
+    df = df.sort('selected_e').group_by(selection_events(),maintain_order=True).agg(
+        pl.col('selected_e').filter(pl.col('selected_e')).any(),
+        pl.col('enu_truth').last(),
+        pl.col('enuvis_truth').last(),
+        pl.col('lepen').last(),
+        (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
+        pl.col(f'otherallcalo_planes_{W}').last(),
+        pl.col('Ke').sum(),
+        pl.col('Kpi').sum(),
+        pl.col('Kpr').sum(),
+        pl.col('OtherPFPs').sum(),
+        pl.col('trkIsContained').filter(pl.col('selected_e')).last(),
+        (pl.col('npi').last()*0.1393).alias('mass_to_add'),
+    ).with_columns(
+        Elep = pl.col('Ke')+0.000511,
+        Ehad_nomass = pl.col('Kpr') + pl.col('Kpi') + pl.col('OtherPFPs') + pl.col(f'otherallcalo_planes_{W}'),
+    ).with_columns(
+        Etotal_nomass = pl.col("Elep") + pl.col("Ehad_nomass"),
+        Etotal = pl.col("Elep") + pl.col("Ehad_nomass") + pl.col('mass_to_add'),
+        Ehad = pl.col('Ehad_nomass') + pl.col('mass_to_add'),
+    )
+    return df
+
+def simple_energy_nue(df:pl.DataFrame, W='W', return_full=False):
+    df = create_ecandidate(df, clear_low_en_as_shower=False, filter_protons=False)
+    df = df.with_columns(
+        lepmom = (pl.col('lepen')**2-0.000511**2).sqrt(),
+        Ke = pl.when(
+            pl.col('selected_e')
+            ).then(
+                trkcalo(W)
+            ).otherwise(0),
+    ).with_columns(
+        Ee = pl.col("Ke") + 0.000511,
+    ).with_columns(
+        Ehad = pl.col('allcalo_planes_W') - pl.col('Ke'),
+        Elep = pl.col('Ke')+0.000511,
+    ).with_columns(
+        Etotal = pl.col("Elep") + pl.col("Ehad")
+    )
+
+    if return_full:
+       return df 
+    df = df.sort(selection_events('selected_e')).group_by(selection_events(), maintain_order=True).agg(
+        pl.all().last(),
+        (pl.col('selected_e').last()).alias('hase'),
+        (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
+    )
+    return df
+
+def simple_energy_nc(df:pl.DataFrame, W='W', return_full=False):
+    df = df.with_columns(
+        Ehad = pl.col('allcalo_planes_W')
+    ).with_columns(
+        Etotal = pl.col("Ehad")
+    )
+    if return_full:
+       return df 
+    df = df.sort(pl.col('trklen')).group_by(selection_events(), maintain_order=True).agg(
+        pl.all().last(),
+        (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
+    )
+    return df
+
+def complex_energy_nc(df:pl.DataFrame,
+                   W="W",
+                   return_full=False,
+                   ):
+
+    df = get_n_prpi(df)
+
+    df=df.with_columns(
+        Kpr = pl.when((pl.col('selected_pr'))).then(
+            pl.when(pl.col('trkmomrange_pr') > 0).then(K_from_p('trkmomrange_pr', 0.9383)).otherwise(trkcalo(W))
+        ).otherwise(0),
+        Kpi = pl.when((pl.col('selected_pi'))).then(
+            pl.when('trkIsContained').then(
+                pl.when(
+                    (pl.col('trkmomrange_mu') > 0)
+                ).then(
+                        K_mu_cont()
+                ).otherwise(trkcalo(W))
+            ).otherwise(
+                pl.when(
+                    (pl.col('trkmomllhd') > 0)
+                ).then(
+                    K_mu_notcont()
+                ).otherwise(trkcalo(W))
+            )
+        ).otherwise(0)
+    )
+
+    df = df.with_columns(
+        Kpr = pl.when((pl.col('selected_pr'))).then(
+            pl.when(pl.col('Kpr')>0).then(pl.col('Kpr')).otherwise(trkcalo(W))
+        ),
+        Kpi = pl.when((pl.col('selected_pi'))).then(
+            pl.when(pl.col('Kpi')>0).then(pl.col('Kpi')).otherwise(trkcalo(W))
+        ),
+        OtherPFPs = pl.when( ~(pl.col('selected_pr')) & ~(pl.col('selected_pi'))).then( trkcalo(W) ).otherwise(0)
+    )
+    if return_full:
+        return df
+
+    df = df.sort(pl.col('trklen')).group_by(selection_events(),maintain_order=True).agg(
+        pl.col('enu_truth').last(),
+        pl.col('enuvis_truth').last(),
+        pl.col('lepen').last(),
+        (pl.col('enu_truth').last()-pl.col('lepen').last()).alias('had_truth'),
+        pl.col(f'otherallcalo_planes_{W}').last(),
+        pl.col('Kpi').sum(),
+        pl.col('Kpr').sum(),
+        pl.col('OtherPFPs').sum(),
+        pl.col('trkIsContained').last(),
+        (pl.col('npi').last()*0.1393).alias('mass_to_add'),
+    ).with_columns(
+        Ehad_nomass = pl.col('Kpr') + pl.col('Kpi') + pl.col('OtherPFPs') + pl.col(f'otherallcalo_planes_{W}'),
+    ).with_columns(
+        Etotal_nomass = pl.col("Ehad_nomass"),
+        Etotal = pl.col("Ehad_nomass") + pl.col('mass_to_add'),
+        Ehad = pl.col("Ehad_nomass") + pl.col('mass_to_add'),
+    )
+    return df

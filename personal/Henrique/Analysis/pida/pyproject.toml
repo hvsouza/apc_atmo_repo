@@ -1,0 +1,6 @@
+[tool.pyright]
+include = ["./"
+]
+extraPaths = [
+	"/home/henrique/Documents/Atmos_Pandora/apc_atmo_repo/Anatree/"
+]
