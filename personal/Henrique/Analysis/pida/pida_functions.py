@@ -7,7 +7,7 @@ from iminuit import Minuit
 # using getlogin() returning username
 user_name = os.getlogin()
 
-sys.path.append(f'/home/{user_name}/Documents/Atmos_Pandora/apc_atmo_repo/Anatree/')
+sys.path.append(f'/home/{user_name}/Documents/cernbox/Atmos_Pandora/apc_atmo_repo/Anatree/')
 from  ana_tools import *
 
 

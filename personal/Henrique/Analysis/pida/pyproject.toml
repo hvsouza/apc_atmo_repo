@@ -2,5 +2,5 @@
 include = ["./"
 ]
 extraPaths = [
-	"/home/henrique/Documents/Atmos_Pandora/apc_atmo_repo/Anatree/"
+	"/home/henrique/Documents/cernbox/Atmos_Pandora/apc_atmo_repo/Anatree/"
 ]

@@ -3,8 +3,8 @@ import polars as pl
 import sys
 import os
 user_name = os.getlogin()
-sys.path.append(f'/home/{user_name}/Documents/Atmos_Pandora/apc_atmo_repo/Anatree/')
-sys.path.append(f'/home/henrique/Documents/Atmos_Pandora/apc_atmo_repo/personal/Henrique/Analysis/pida/')
+sys.path.append(f'/home/{user_name}/Documents/cernbox/Atmos_Pandora/apc_atmo_repo/Anatree/')
+sys.path.append(f'/home/henrique/Documents/cernbox/Atmos_Pandora/apc_atmo_repo/personal/Henrique/Analysis/pida/')
 from  ana_tools import *
 from pida_functions import *
 from itertools import product
