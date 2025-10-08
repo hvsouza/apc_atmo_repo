@@ -35,7 +35,7 @@ def process_data_nue(dfall:pl.DataFrame, cheatlep = False, cheatpi = False, chea
                                            return_only_selected=False)
     dfcomplex_en = complex_energy_nue(dfprpiselected, W="W")
     dfsimple_en = dfsimple_en.select(
-        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add', 'Ehad_nomass', 'Etotal_nomass').columns
+        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add').columns
     )
     if not (cheatlep or cheatpi or cheatpr):
         dfsimple_en.write_parquet("../data/processed/nue/simple.parquet")
@@ -49,7 +49,7 @@ def process_data_nc(dfall:pl.DataFrame, cheatlep = False, cheatpi = False, cheat
     dfcomplex_en = complex_energy_nc(dfprpiselected, W="W")
 
     dfsimple_en = dfsimple_en.select(
-        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add', 'Ehad_nomass', 'Etotal_nomass').columns
+        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add').columns
     )
     if not (cheatlep or cheatpi or cheatpr):
         dfsimple_en.write_parquet("../data/processed/nc/simple.parquet")
@@ -69,7 +69,7 @@ def process_data_numu(dfall:pl.DataFrame, cheatlep = False, cheatpi = False, che
     dfcomplex_en = complex_energy2(dfprpiselected, W="W", force_bigger_pr=False, do_not_force_bigger_pi=False)
 
     dfsimple_en = dfsimple_en.select(
-        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add', 'Ehad_nomass', 'Etotal_nomass').columns
+        dfcomplex_en.drop('Kpi', 'Kpr', 'OtherPFPs', 'mass_to_add').columns
     )
 
     if not (cheatlep or cheatpi or cheatpr):
@@ -98,20 +98,21 @@ if __name__ == "__main__":
             )
 
     if neutrinos == "numu":
-        dfall = dftrkg4.filter(
+        dfall = dfall.filter(
            pl.col('nuPDG_truth').abs() == 14
            )
     elif neutrinos == "nue":
-        dfall = dftrkg4.filter(
+        dfall = dfall.filter(
            pl.col('nuPDG_truth').abs() == 12
            )
         
     if isinstance(dfall, pl.LazyFrame):
         dfall = dfall.collect()
 
-    dfall = dfall.with_columns(
+    dfall = dfall.sort('trklen').with_columns(
            pnc = pl.col('trkpurity_planes_B')*pl.col('trkcompleteness_planes_B'),
            )
+
     possibles = [True, False]
     process_data = process_data_nue
     if neutrinos == "numu":
@@ -123,7 +124,8 @@ if __name__ == "__main__":
 
     repeat = 3 if neutrinos != "nc" else 2
     res = product(possibles, repeat=repeat)
-
+    res = ([ False, False, False ],)
+    # res = ([ False, False ],)
 
     for docheats in tqdm(res):
         c_lep, c_pi, c_pr = (docheats if neutrinos != "nc" else (False, *docheats))
